@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gestão financeira simplificada para profissionais autônomos">
+    <meta name="theme-color" content="#2563eb">
+    <title>FinançaFácil - Gestão para Autônomos</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FinançaFácil">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+
+        .auth-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .auth-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 420px; }
+        .auth-box h1 { font-size: 28px; margin-bottom: 6px; color: #2563eb; }
+        .auth-box p { color: #666; margin-bottom: 28px; }
+        .auth-toggle { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+        .auth-toggle a { color: #2563eb; cursor: pointer; font-weight: 600; }
+
+        .loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; color: #666; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 7px; font-weight: 500; font-size: 14px; color: #444; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; transition: border 0.2s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #2563eb; }
+
+        .btn { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn:hover { background: #1d4ed8; }
+        .btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+        .error-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; display: none; }
+
+        .app-container { display: none; }
+        .app-header { background: white; border-bottom: 1px solid #e5e7eb; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .app-header h2 { font-size: 20px; color: #2563eb; }
+        .user-menu { display: flex; align-items: center; gap: 12px; }
+        .user-name { font-weight: 500; color: #666; font-size: 14px; }
+        .logout-btn { padding: 8px 14px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .sync-indicator { font-size: 12px; color: #10b981; }
+        .sync-indicator.syncing { color: #f59e0b; }
+
+        .nav-tabs { background: white; border-bottom: 1px solid #e5e7eb; display: flex; overflow-x: auto; }
+        .nav-tab { padding: 15px 22px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #666; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .nav-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+        .content { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .card { background: white; border-radius: 12px; padding: 22px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card-title { font-size: 17px; font-weight: 600; margin-bottom: 15px; }
+        .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 10px; flex-wrap: wrap; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 22px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .stat-label { font-size: 12px; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #333; }
+        .stat-value.positive { color: #10b981; }
+        .stat-value.negative { color: #ef4444; }
+
+        .meta-card { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 22px; border-radius: 12px; margin-bottom: 22px; }
+        .meta-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .meta-title { font-size: 13px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; }
+        .meta-edit { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .meta-values { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+        .meta-current { font-size: 26px; font-weight: 700; }
+        .meta-target { font-size: 15px; opacity: 0.9; }
+        .meta-progress-bar { background: rgba(255,255,255,0.2); height: 10px; border-radius: 5px; overflow: hidden; }
+        .meta-progress-fill { background: white; height: 100%; transition: width 0.5s; }
+        .meta-percent { margin-top: 8px; font-size: 13px; opacity: 0.9; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 11px 12px; background: #f9fafb; font-weight: 600; font-size: 13px; color: #555; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 11px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+        tr:hover { background: #f9fafb; }
+
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .filter-bar label { font-size: 13px; color: #666; font-weight: 500; }
+        .filter-bar input, .filter-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+
+        .btn-add { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .btn-small { padding: 5px 10px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; margin-right: 3px; }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-whatsapp { background: #25d366; color: white; }
+        .btn-success { background: #10b981; color: white; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; }
+        .payment-item { background: #f9fafb; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb; }
+        .payment-item.overdue { border-left-color: #ef4444; }
+        .payment-date { font-weight: 600; margin-bottom: 4px; }
+        .payment-client { color: #666; font-size: 13px; }
+        .payment-value { font-size: 18px; font-weight: 700; margin-top: 8px; }
+
+        .empty-state { text-align: center; padding: 50px 20px; color: #999; }
+        .empty-state-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.3; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 28px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 19px; font-weight: 600; }
+        .close-modal { background: none; border: none; font-size: 26px; cursor: pointer; color: #999; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+        .checkbox-row input { width: auto; }
+        .checkbox-row label { margin: 0; font-weight: normal; cursor: pointer; }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-tab { padding: 12px 14px; font-size: 13px; }
+            .stat-value { font-size: 20px; }
+            .auth-box { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
+    </div>
+
+    <div id="loginScreen" class="auth-container" style="display:none;">
+        <div class="auth-box">
+            <h1>FinançaFácil</h1>
+            <p>Entre na sua conta para continuar</p>
+            <div class="error-msg" id="loginError"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="seu@email.com"></div>
+            <div class="form-group"><label>Senha</label><input type="password" id="loginPassword" placeholder="Sua senha"></div>
+            <button class="btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+            <div class="auth-toggle">Não tem conta? <a onclick="showRegister()">Criar conta grátis</a></div>
+        </div>
+    </div>
+
+    <div id="registerScreen" class="auth-container" style="display:none;">
+        <div class="auth-box">
+            <h1>FinançaFácil</h1>
+            <p>Crie sua conta grátis</p>
+            <div class="error-msg" id="registerError"></div>
+            <div class="form-group"><label>Nome completo</label><input type="text" id="registerName" placeholder="Seu nome"></div>
+            <div class="form-group"><label>WhatsApp</label><input type="tel" id="registerPhone" placeholder="(00) 00000-0000"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="registerEmail" placeholder="seu@email.com"></div>
+            <div class="form-group"><label>Senha</label><input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres"></div>
+            <button class="btn" id="registerBtn" onclick="doRegister()">Criar conta</button>
+            <div class="auth-toggle">Já tem conta? <a onclick="showLogin()">Entrar</a></div>
+        </div>
+    </div>
+
+    <div id="appContainer" class="app-container">
+        <div class="app-header">
+            <h2>FinançaFácil</h2>
+            <div class="user-menu">
+                <span class="sync-indicator" id="syncIndicator">● Salvo</span>
+                <span class="user-name" id="headerUserName"></span>
+                <button class="logout-btn" onclick="doLogout()">Sair</button>
+            </div>
+        </div>
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="showSection('dashboard',this)">Dashboard</button>
+            <button class="nav-tab" onclick="showSection('clients',this)">Clientes</button>
+            <button class="nav-tab" onclick="showSection('transactions',this)">Movimentações</button>
+            <button class="nav-tab" onclick="showSection('charges',this)">Cobranças</button>
+            <button class="nav-tab" onclick="showSection('calendar',this)">Calendário</button>
+            <button class="nav-tab" onclick="showSection('reports',this)">Relatórios</button>
+        </nav>
+        <div class="content">
+            <div id="dashboard" class="section active">
+                <div class="meta-card">
+                    <div class="meta-header">
+                        <span class="meta-title">Meta de Faturamento do Mês</span>
+                        <button class="meta-edit" onclick="openModal('metaModal')">Editar</button>
+                    </div>
+                    <div class="meta-values">
+                        <span class="meta-current" id="metaCurrent">R$ 0,00</span>
+                        <span class="meta-target" id="metaTarget">de R$ 0,00</span>
+                    </div>
+                    <div class="meta-progress-bar"><div class="meta-progress-fill" id="metaProgress" style="width:0%"></div></div>
+                    <div class="meta-percent" id="metaPercent">Clique em editar para definir sua meta</div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-label">Receitas do mês</div><div class="stat-value positive" id="totalRevenue">R$ 0,00</div></div>
+                    <div class="stat-card"><div class="stat-label">Despesas do mês</div><div class="stat-value negative" id="totalExpenses">R$ 0,00</div></div>
+                    <div class="stat-card"><div class="stat-label">Lucro do mês</div><div class="stat-value" id="totalProfit">R$ 0,00</div></div>
+                    <div class="stat-card"><div class="stat-label">Clientes ativos</div><div class="stat-value" id="totalClients">0</div></div>
+                </div>
+                <div class="card"><div class="card-title">Cobranças pendentes</div><div id="pendingCharges"></div></div>
+                <div class="card"><div class="card-title">Últimas movimentações</div><div id="recentTransactions"></div></div>
+            </div>
+
+            <div id="clients" class="section">
+                <div class="card">
+                    <div class="card-header-flex">
+                        <div class="card-title" style="margin:0;">Meus Clientes</div>
+                        <button class="btn-add" onclick="openModal('clientModal')">+ Novo Cliente</button>
+                    </div>
+                    <div id="clientsList"></div>
+                </div>
+            </div>
+
+            <div id="transactions" class="section">
+                <div class="card">
+                    <div class="card-header-flex">
+                        <div class="card-title" style="margin:0;">Movimentações</div>
+                        <button class="btn-add" onclick="openModal('transactionModal')">+ Nova Movimentação</button>
+                    </div>
+                    <div class="filter-bar">
+                        <label>Período:</label>
+                        <select id="filterPeriod" onchange="onFilterChange()">
+                            <option value="month" selected>Este mês</option>
+                            <option value="lastMonth">Mês passado</option>
+                            <option value="last3">Últimos 3 meses</option>
+                            <option value="year">Este ano</option>
+                            <option value="all">Todo período</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                        <div id="customRange" style="display:none;gap:8px;">
+                            <input type="date" id="filterStart" onchange="renderTransactions()">
+                            <input type="date" id="filterEnd" onchange="renderTransactions()">
+                        </div>
+                        <label>Tipo:</label>
+                        <select id="filterType" onchange="renderTransactions()">
+                            <option value="all">Todos</option>
+                            <option value="receita">Receitas</option>
+                            <option value="despesa">Despesas</option>
+                        </select>
+                    </div>
+                    <div id="transactionsList"></div>
+                </div>
+            </div>
+
+            <div id="charges" class="section">
+                <div class="card">
+                    <div class="card-header-flex">
+                        <div class="card-title" style="margin:0;">Cobranças</div>
+                        <button class="btn-add" onclick="openModal('chargeModal')">+ Nova Cobrança</button>
+                    </div>
+                    <div id="chargesList"></div>
+                </div>
+            </div>
+
+            <div id="calendar" class="section">
+                <div class="card"><div class="card-title">Calendário de Pagamentos</div><div class="calendar-grid" id="calendarGrid"></div></div>
+            </div>
+
+            <div id="reports" class="section">
+                <div class="card"><div class="card-title">Relatório Mensal</div><div id="monthlyReport"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais -->
+    <div id="metaModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><div class="modal-title">Meta de Faturamento</div><button class="close-modal" onclick="closeModal('metaModal')">×</button></div>
+            <div class="form-group"><label>Quanto quer faturar este mês?</label><input type="number" id="metaInput" placeholder="Ex: 5000"></div>
+            <button class="btn" onclick="saveMeta()">Salvar Meta</button>
+        </div>
+    </div>
+
+    <div id="clientModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><div class="modal-title">Novo Cliente</div><button class="close-modal" onclick="closeModal('clientModal')">×</button></div>
+            <div class="form-group"><label>Nome completo *</label><input type="text" id="clientName"></div>
+            <div class="form-group"><label>WhatsApp *</label><input type="tel" id="clientPhone" placeholder="(00) 00000-0000"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="clientEmail"></div>
+            <div class="form-group"><label>Serviço contratado</label><input type="text" id="clientService"></div>
+            <div class="form-group"><label>Valor mensal *</label><input type="number" id="clientValue"></div>
+            <button class="btn" onclick="saveClient()">Salvar Cliente</button>
+        </div>
+    </div>
+
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><div class="modal-title">Nova Movimentação</div><button class="close-modal" onclick="closeModal('transactionModal')">×</button></div>
+            <div class="form-group"><label>Tipo</label><select id="transactionType"><option value="receita">Receita</option><option value="despesa">Despesa</option></select></div>
+            <div class="form-group"><label>Descrição *</label><input type="text" id="transactionDescription"></div>
+            <div class="form-group"><label>Valor *</label><input type="number" id="transactionValue"></div>
+            <div class="form-group"><label>Data *</label><input type="date" id="transactionDate"></div>
+            <button class="btn" onclick="saveTransaction()">Salvar</button>
+        </div>
+    </div>
+
+    <div id="chargeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><div class="modal-title">Nova Cobrança</div><button class="close-modal" onclick="closeModal('chargeModal')">×</button></div>
+            <div class="form-group"><label>Cliente *</label><select id="chargeClient"></select></div>
+            <div class="form-group"><label>Descrição *</label><input type="text" id="chargeDescription"></div>
+            <div class="form-group"><label>Valor *</label><input type="number" id="chargeValue"></div>
+            <div class="form-group"><label>Vencimento *</label><input type="date" id="chargeDueDate"></div>
+            <div class="form-group">
+                <div class="checkbox-row"><input type="checkbox" id="chargeRecurring" onchange="toggleRecurring()"><label for="chargeRecurring">Cobrança recorrente mensal</label></div>
+            </div>
+            <div class="form-group" id="recurringMonths" style="display:none;">
+                <label>Repetir por:</label>
+                <select id="chargeMonths"><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option><option value="24">24 meses</option></select>
+            </div>
+            <button class="btn" onclick="saveCharge()">Criar Cobrança</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKJwjBBaGGpMuH5p7_lgaJPkK5ba8rKcY",
+            authDomain: "financa-facil-7e807.firebaseapp.com",
+            projectId: "financa-facil-7e807",
+            storageBucket: "financa-facil-7e807.firebasestorage.app",
+            messagingSenderId: "87794958801",
+            appId: "1:87794958801:web:548886bfb80398225720f0"
+        };
+
+        const fbApp = initializeApp(firebaseConfig);
+        const auth = getAuth(fbApp);
+        const db = getFirestore(fbApp);
+
+        let currentUser = null;
+        window._data = { clients: [], transactions: [], charges: [], meta: 0 };
+
+        function col(c) { return collection(db, 'usuarios', currentUser.uid, c); }
+        function docRef(c, id) { return doc(db, 'usuarios', currentUser.uid, c, id); }
+        function metaRef() { return doc(db, 'usuarios', currentUser.uid, 'config', 'meta'); }
+
+        function setSyncing(v) {
+            const el = document.getElementById('syncIndicator');
+            el.textContent = v ? '↑ Salvando...' : '● Salvo';
+            el.className = 'sync-indicator' + (v ? ' syncing' : '');
+        }
+
+        async function loadAll() {
+            const [cs, ts, chs, ms] = await Promise.all([
+                getDocs(col('clientes')),
+                getDocs(col('transacoes')),
+                getDocs(col('cobrancas')),
+                getDoc(metaRef())
+            ]);
+            window._data.clients = cs.docs.map(d => ({ id: d.id, ...d.data() }));
+            window._data.transactions = ts.docs.map(d => ({ id: d.id, ...d.data() }));
+            window._data.charges = chs.docs.map(d => ({ id: d.id, ...d.data() }));
+            window._data.meta = ms.exists() ? (ms.data().value || 0) : 0;
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                await loadAll();
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('registerScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
+                document.getElementById('headerUserName').textContent = (user.displayName || user.email).split(' ')[0];
+                window.renderDashboard();
+            } else {
+                currentUser = null;
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'none';
+                document.getElementById('loginScreen').style.display = 'flex';
+            }
+        });
+
+        window.showLogin = () => { document.getElementById('registerScreen').style.display = 'none'; document.getElementById('loginScreen').style.display = 'flex'; };
+        window.showRegister = () => { document.getElementById('loginScreen').style.display = 'none'; document.getElementById('registerScreen').style.display = 'flex'; };
+
+        window.doLogin = async () => {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            const err = document.getElementById('loginError');
+            const btn = document.getElementById('loginBtn');
+            err.style.display = 'none';
+            if (!email || !pass) { err.textContent = 'Preencha email e senha.'; err.style.display = 'block'; return; }
+            btn.disabled = true; btn.textContent = 'Entrando...';
+            try { await signInWithEmailAndPassword(auth, email, pass); }
+            catch { err.textContent = 'Email ou senha incorretos.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; }
+        };
+
+        window.doRegister = async () => {
+            const name = document.getElementById('registerName').value;
+            const phone = document.getElementById('registerPhone').value;
+            const email = document.getElementById('registerEmail').value;
+            const pass = document.getElementById('registerPassword').value;
+            const err = document.getElementById('registerError');
+            const btn = document.getElementById('registerBtn');
+            err.style.display = 'none';
+            if (!name || !phone || !email || !pass) { err.textContent = 'Preencha todos os campos.'; err.style.display = 'block'; return; }
+            if (pass.length < 6) { err.textContent = 'Senha mínimo 6 caracteres.'; err.style.display = 'block'; return; }
+            btn.disabled = true; btn.textContent = 'Criando conta...';
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await updateProfile(cred.user, { displayName: name });
+                await setDoc(doc(db, 'usuarios', cred.user.uid, 'config', 'perfil'), { name, phone, email });
+            } catch(e) {
+                err.textContent = e.code === 'auth/email-already-in-use' ? 'Email já cadastrado.' : 'Erro ao criar conta.';
+                err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Criar conta';
+            }
+        };
+
+        window.doLogout = async () => { if (confirm('Deseja sair?')) await signOut(auth); };
+
+        window.saveMeta = async () => {
+            const val = parseFloat(document.getElementById('metaInput').value);
+            if (!val) { alert('Digite um valor válido'); return; }
+            setSyncing(true);
+            await setDoc(metaRef(), { value: val });
+            window._data.meta = val;
+            setSyncing(false);
+            window.closeModal('metaModal');
+            window.renderDashboard();
+        };
+
+        window.saveClient = async () => {
+            const c = { name: document.getElementById('clientName').value, phone: document.getElementById('clientPhone').value, email: document.getElementById('clientEmail').value, service: document.getElementById('clientService').value, value: parseFloat(document.getElementById('clientValue').value) || 0, createdAt: new Date().toISOString() };
+            if (!c.name || !c.phone || !c.value) { alert('Preencha os campos obrigatórios (*)'); return; }
+            setSyncing(true);
+            const ref = await addDoc(col('clientes'), c);
+            window._data.clients.push({ id: ref.id, ...c });
+            setSyncing(false);
+            window.closeModal('clientModal');
+            ['clientName','clientPhone','clientEmail','clientService','clientValue'].forEach(id => document.getElementById(id).value = '');
+            window.renderClients(); window.renderDashboard();
+        };
+
+        window.deleteClient = async (id) => {
+            if (!confirm('Excluir este cliente?')) return;
+            setSyncing(true);
+            await deleteDoc(docRef('clientes', id));
+            window._data.clients = window._data.clients.filter(c => c.id !== id);
+            setSyncing(false);
+            window.renderClients(); window.renderDashboard();
+        };
+
+        window.saveTransaction = async () => {
+            const t = { type: document.getElementById('transactionType').value, description: document.getElementById('transactionDescription').value, value: parseFloat(document.getElementById('transactionValue').value) || 0, date: document.getElementById('transactionDate').value, createdAt: new Date().toISOString() };
+            if (!t.description || !t.value || !t.date) { alert('Preencha todos os campos'); return; }
+            setSyncing(true);
+            const ref = await addDoc(col('transacoes'), t);
+            window._data.transactions.push({ id: ref.id, ...t });
+            setSyncing(false);
+            window.closeModal('transactionModal');
+            document.getElementById('transactionDescription').value = '';
+            document.getElementById('transactionValue').value = '';
+            window.renderTransactions(); window.renderDashboard();
+        };
+
+        window.deleteTransaction = async (id) => {
+            if (!confirm('Excluir esta movimentação?')) return;
+            setSyncing(true);
+            await deleteDoc(docRef('transacoes', id));
+            window._data.transactions = window._data.transactions.filter(t => t.id !== id);
+            setSyncing(false);
+            window.renderTransactions(); window.renderDashboard();
+        };
+
+        window.saveCharge = async () => {
+            const clientId = document.getElementById('chargeClient').value;
+            const client = window._data.clients.find(c => c.id === clientId);
+            if (!client) { alert('Selecione um cliente'); return; }
+            const description = document.getElementById('chargeDescription').value;
+            const value = parseFloat(document.getElementById('chargeValue').value) || 0;
+            const dueDate = document.getElementById('chargeDueDate').value;
+            const isRecurring = document.getElementById('chargeRecurring').checked;
+            const months = parseInt(document.getElementById('chargeMonths').value);
+            if (!description || !value || !dueDate) { alert('Preencha todos os campos'); return; }
+            setSyncing(true);
+            const total = isRecurring ? months : 1;
+            const groupId = isRecurring ? Date.now().toString() : null;
+            const base = new Date(dueDate + 'T00:00:00');
+            for (let i = 0; i < total; i++) {
+                const d = new Date(base); d.setMonth(d.getMonth() + i);
+                const ch = { clientId, clientName: client.name, clientPhone: client.phone, description: isRecurring ? `${description} (${i+1}/${months})` : description, value, dueDate: d.toISOString().split('T')[0], status: 'pendente', isRecurring, groupId, createdAt: new Date().toISOString() };
+                const ref = await addDoc(col('cobrancas'), ch);
+                window._data.charges.push({ id: ref.id, ...ch });
+            }
+            setSyncing(false);
+            window.closeModal('chargeModal');
+            ['chargeDescription','chargeValue'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('chargeRecurring').checked = false;
+            document.getElementById('recurringMonths').style.display = 'none';
+            window.renderCharges(); window.renderDashboard();
+        };
+
+        window.markAsPaid = async (id) => {
+            const ch = window._data.charges.find(c => c.id === id);
+            if (!ch) return;
+            setSyncing(true);
+            await setDoc(docRef('cobrancas', id), { ...ch, status: 'pago' });
+            ch.status = 'pago';
+            const t = { type: 'receita', description: `${ch.description} - ${ch.clientName}`, value: ch.value, date: new Date().toISOString().split('T')[0], createdAt: new Date().toISOString() };
+            const ref = await addDoc(col('transacoes'), t);
+            window._data.transactions.push({ id: ref.id, ...t });
+            setSyncing(false);
+            window.renderCharges(); window.renderDashboard();
+        };
+
+        window.deleteCharge = async (id) => {
+            const ch = window._data.charges.find(c => c.id === id);
+            if (!ch) return;
+            setSyncing(true);
+            if (ch.groupId) {
+                const single = confirm('Cobrança recorrente.\nOK = excluir só esta\nCancelar = excluir todas do grupo');
+                if (single) { await deleteDoc(docRef('cobrancas', id)); window._data.charges = window._data.charges.filter(c => c.id !== id); }
+                else { for (const c of window._data.charges.filter(c => c.groupId === ch.groupId)) { await deleteDoc(docRef('cobrancas', c.id)); } window._data.charges = window._data.charges.filter(c => c.groupId !== ch.groupId); }
+            } else {
+                if (!confirm('Excluir esta cobrança?')) { setSyncing(false); return; }
+                await deleteDoc(docRef('cobrancas', id)); window._data.charges = window._data.charges.filter(c => c.id !== id);
+            }
+            setSyncing(false);
+            window.renderCharges(); window.renderDashboard();
+        };
+
+        window.sendWhatsApp = (id) => {
+            const ch = window._data.charges.find(c => c.id === id);
+            if (!ch) return;
+            const msg = `Olá ${ch.clientName}! 👋\n\nLembrete de pagamento:\n\n📋 *${ch.description}*\n💰 Valor: *${fmt(ch.value)}*\n📅 Vencimento: *${fmtDate(ch.dueDate)}*\n\nQualquer dúvida, estou à disposição!`;
+            window.open(`https://wa.me/55${ch.clientPhone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+        };
+    </script>
+
+    <script>
+        function fmt(v) { return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
+        function fmtDate(s) { return new Date(s+'T00:00:00').toLocaleDateString('pt-BR'); }
+        function D() { return window._data || {clients:[],transactions:[],charges:[],meta:0}; }
+
+        window.openModal = (id) => {
+            if (id === 'chargeModal') {
+                const sel = document.getElementById('chargeClient');
+                sel.innerHTML = '<option value="">Selecione um cliente</option>';
+                D().clients.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+            }
+            if (id === 'metaModal') document.getElementById('metaInput').value = D().meta || '';
+            document.getElementById(id).classList.add('active');
+        };
+
+        window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+
+        window.showSection = (id, btn) => {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            ({ dashboard: window.renderDashboard, clients: window.renderClients, transactions: window.renderTransactions, charges: window.renderCharges, calendar: window.renderCalendar, reports: window.renderReports })[id]?.();
+        };
+
+        window.toggleRecurring = () => {
+            document.getElementById('recurringMonths').style.display = document.getElementById('chargeRecurring').checked ? 'block' : 'none';
+        };
+
+        window.onFilterChange = () => {
+            const period = document.getElementById('filterPeriod').value;
+            document.getElementById('customRange').style.display = period === 'custom' ? 'flex' : 'none';
+            window.renderTransactions();
+        };
+
+        window.renderDashboard = () => {
+            const data = D(); const now = new Date();
+            const mt = data.transactions.filter(t => { const d = new Date(t.date); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); });
+            const rev = mt.filter(t=>t.type==='receita').reduce((s,t)=>s+t.value,0);
+            const exp = mt.filter(t=>t.type==='despesa').reduce((s,t)=>s+t.value,0);
+            const profit = rev - exp;
+            const meta = data.meta || 0;
+            const pct = meta > 0 ? Math.min((rev/meta)*100,100) : 0;
+
+            document.getElementById('metaCurrent').textContent = fmt(rev);
+            document.getElementById('metaTarget').textContent = 'de ' + fmt(meta);
+            document.getElementById('metaProgress').style.width = pct+'%';
+            document.getElementById('metaPercent').textContent = meta > 0 ? `${pct.toFixed(0)}% atingido` : 'Clique em editar para definir sua meta';
+            document.getElementById('totalRevenue').textContent = fmt(rev);
+            document.getElementById('totalExpenses').textContent = fmt(exp);
+            document.getElementById('totalProfit').textContent = fmt(profit);
+            document.getElementById('totalProfit').className = 'stat-value ' + (profit>=0?'positive':'negative');
+            document.getElementById('totalClients').textContent = data.clients.length;
+
+            const pending = data.charges.filter(c=>c.status==='pendente').slice(0,5);
+            document.getElementById('pendingCharges').innerHTML = pending.length === 0 ? '<p style="color:#999;">Nenhuma cobrança pendente</p>' :
+                '<div class="table-container"><table><thead><tr><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Ação</th></tr></thead><tbody>' +
+                pending.map(c=>`<tr><td>${c.clientName}</td><td>${fmtDate(c.dueDate)}</td><td>${fmt(c.value)}</td><td><button class="btn-small btn-whatsapp" onclick="sendWhatsApp('${c.id}')">WhatsApp</button></td></tr>`).join('') +
+                '</tbody></table></div>';
+
+            const recent = [...data.transactions].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
+            document.getElementById('recentTransactions').innerHTML = recent.length === 0 ? '<p style="color:#999;">Nenhuma movimentação recente</p>' :
+                '<div class="table-container"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>' +
+                recent.map(t=>`<tr><td>${fmtDate(t.date)}</td><td>${t.description}</td><td><span class="badge ${t.type==='receita'?'badge-success':'badge-danger'}">${t.type}</span></td><td>${fmt(t.value)}</td></tr>`).join('') +
+                '</tbody></table></div>';
+        };
+
+        window.renderClients = () => {
+            const data = D(); const el = document.getElementById('clientsList');
+            el.innerHTML = data.clients.length === 0 ? '<div class="empty-state"><div class="empty-state-icon">👥</div><p>Nenhum cliente cadastrado ainda</p></div>' :
+                '<div class="table-container"><table><thead><tr><th>Nome</th><th>WhatsApp</th><th>Serviço</th><th>Valor</th><th>Ações</th></tr></thead><tbody>' +
+                data.clients.map(c=>`<tr><td>${c.name}</td><td>${c.phone}</td><td>${c.service||'-'}</td><td>${fmt(c.value)}</td><td><button class="btn-small btn-delete" onclick="deleteClient('${c.id}')">Excluir</button></td></tr>`).join('') +
+                '</tbody></table></div>';
+        };
+
+        window.renderTransactions = () => {
+            const data = D();
+            const period = document.getElementById('filterPeriod')?.value || 'month';
+            const type = document.getElementById('filterType')?.value || 'all';
+            const now = new Date(); let start, end;
+            if (period==='month') { start=new Date(now.getFullYear(),now.getMonth(),1); end=new Date(now.getFullYear(),now.getMonth()+1,0); }
+            else if (period==='lastMonth') { start=new Date(now.getFullYear(),now.getMonth()-1,1); end=new Date(now.getFullYear(),now.getMonth(),0); }
+            else if (period==='last3') { start=new Date(now.getFullYear(),now.getMonth()-2,1); end=new Date(now.getFullYear(),now.getMonth()+1,0); }
+            else if (period==='year') { start=new Date(now.getFullYear(),0,1); end=new Date(now.getFullYear(),11,31); }
+            else if (period==='custom') { const sv=document.getElementById('filterStart')?.value; const ev=document.getElementById('filterEnd')?.value; if(sv&&ev){start=new Date(sv+'T00:00:00');end=new Date(ev+'T23:59:59');} }
+
+            const filtered = data.transactions.filter(t => {
+                const d = new Date(t.date+'T00:00:00');
+                return (!start||(d>=start&&d<=end)) && (type==='all'||t.type===type);
+            });
+
+            const el = document.getElementById('transactionsList');
+            if (filtered.length===0) { el.innerHTML='<div class="empty-state"><div class="empty-state-icon">💰</div><p>Nenhuma movimentação no período</p></div>'; return; }
+
+            const totalR=filtered.filter(t=>t.type==='receita').reduce((s,t)=>s+t.value,0);
+            const totalE=filtered.filter(t=>t.type==='despesa').reduce((s,t)=>s+t.value,0);
+
+            el.innerHTML = `<div style="background:#f9fafb;padding:14px;border-radius:8px;margin-bottom:15px;display:flex;gap:25px;flex-wrap:wrap;">
+                <div><strong style="color:#10b981;">Receitas:</strong> ${fmt(totalR)}</div>
+                <div><strong style="color:#ef4444;">Despesas:</strong> ${fmt(totalE)}</div>
+                <div><strong>Saldo:</strong> ${fmt(totalR-totalE)}</div></div>
+                <div class="table-container"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th><th>Ações</th></tr></thead><tbody>` +
+                [...filtered].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>
+                    `<tr><td>${fmtDate(t.date)}</td><td>${t.description}</td><td><span class="badge ${t.type==='receita'?'badge-success':'badge-danger'}">${t.type}</span></td><td>${fmt(t.value)}</td><td><button class="btn-small btn-delete" onclick="deleteTransaction('${t.id}')">Excluir</button></td></tr>`
+                ).join('') + '</tbody></table></div>';
+        };
+
+        window.renderCharges = () => {
+            const data = D(); const el = document.getElementById('chargesList');
+            if (data.charges.length===0) { el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📄</div><p>Nenhuma cobrança criada ainda</p></div>'; return; }
+            const today = new Date().toISOString().split('T')[0];
+            el.innerHTML = '<div class="table-container"><table><thead><tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>' +
+                [...data.charges].sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).map(c => {
+                    const over = c.dueDate<today&&c.status==='pendente';
+                    const badge = c.status==='pago'?'badge-success':(over?'badge-danger':'badge-warning');
+                    const status = c.status==='pago'?'Pago':(over?'Vencido':'Pendente');
+                    return `<tr><td>${c.clientName}</td><td>${c.description}${c.isRecurring?'<span class="badge badge-info" style="margin-left:5px;">Recorrente</span>':''}</td><td>${fmtDate(c.dueDate)}</td><td>${fmt(c.value)}</td><td><span class="badge ${badge}">${status}</span></td><td>
+                        ${c.status==='pendente'?`<button class="btn-small btn-whatsapp" onclick="sendWhatsApp('${c.id}')">WhatsApp</button><button class="btn-small btn-success" onclick="markAsPaid('${c.id}')">Pago</button>`:''}
+                        <button class="btn-small btn-delete" onclick="deleteCharge('${c.id}')">Excluir</button></td></tr>`;
+                }).join('') + '</tbody></table></div>';
+        };
+
+        window.renderCalendar = () => {
+            const data = D(); const el = document.getElementById('calendarGrid');
+            const pending = data.charges.filter(c=>c.status==='pendente');
+            if (pending.length===0) { el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📅</div><p>Nenhum pagamento pendente</p></div>'; return; }
+            const today = new Date().toISOString().split('T')[0];
+            el.innerHTML = [...pending].sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).map(c=>
+                `<div class="payment-item ${c.dueDate<today?'overdue':''}"><div class="payment-date">${fmtDate(c.dueDate)}</div><div class="payment-client">${c.clientName}</div><div class="payment-client">${c.description}</div><div class="payment-value">${fmt(c.value)}</div></div>`
+            ).join('');
+        };
+
+        window.renderReports = () => {
+            const data = D(); const now = new Date();
+            const mt = data.transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+            const rev=mt.filter(t=>t.type==='receita').reduce((s,t)=>s+t.value,0);
+            const exp=mt.filter(t=>t.type==='despesa').reduce((s,t)=>s+t.value,0);
+            const months=[];
+            for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const mtr=data.transactions.filter(t=>{const td=new Date(t.date);return td.getMonth()===d.getMonth()&&td.getFullYear()===d.getFullYear();});const r=mtr.filter(t=>t.type==='receita').reduce((s,t)=>s+t.value,0);const e=mtr.filter(t=>t.type==='despesa').reduce((s,t)=>s+t.value,0);months.push({label:d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}),revenue:r,expense:e,profit:r-e});}
+            document.getElementById('monthlyReport').innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-label">Receitas (mês)</div><div class="stat-value positive">${fmt(rev)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Despesas (mês)</div><div class="stat-value negative">${fmt(exp)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Lucro líquido</div><div class="stat-value ${rev-exp>=0?'positive':'negative'}">${fmt(rev-exp)}</div></div>
+                </div>
+                <h3 style="margin:25px 0 15px;">Comparativo últimos 6 meses</h3>
+                <div class="table-container"><table><thead><tr><th>Mês</th><th>Receitas</th><th>Despesas</th><th>Lucro</th></tr></thead><tbody>
+                ${months.map(m=>`<tr><td>${m.label}</td><td style="color:#10b981;">${fmt(m.revenue)}</td><td style="color:#ef4444;">${fmt(m.expense)}</td><td style="font-weight:600;">${fmt(m.profit)}</td></tr>`).join('')}
+                </tbody></table></div>`;
+        };
+
+        document.getElementById('transactionDate').valueAsDate = new Date();
+        document.getElementById('chargeDueDate').valueAsDate = new Date();
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));
+        }
+    </script>
+</body>
+</html>
